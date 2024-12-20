@@ -1,3 +1,5 @@
+#This project for querying was fueled by the following data from a superstore:
+
 CREATE TABLE superstore (
     item_id INTEGER PRIMARY KEY,
     item_name TEXT,
@@ -32,7 +34,7 @@ SELECT *
 FROM superstore
 ORDER BY price;
 
-# using aggregate functions to show all statistics on item prices
+#using aggregate functions to show all statistics on item prices
 SELECT AVG(price)
 FROM superstore;
 
@@ -48,18 +50,18 @@ FROM superstore;
 SELECT COUNT(price)
 FROM superstore;
 
-# showing price stats only for everything in the Kitchen Supplies category aka catagory
+#showing price stats only for everything in the Kitchen Supplies category aka catagory
 SELECT SUM(price), category
 FROM superstore
 WHERE category='Kitchen Supplies'
 GROUP BY category;
 
-# showing the amount of stock for the memory foam cloudy dreamy mattress!
+#showing the amount of stock for the memory foam cloudy dreamy mattress!
 SELECT stock_quantity, item_name
 FROM superstore
 WHERE item_name='Memory Foam Mattress';
 
-# showing the highest rated item to point out the best of the best
+#showing the highest rated item to point out the best of the best
 SELECT average_rating, item_name, category
 FROM superstore
 ORDER BY average_rating DESC
