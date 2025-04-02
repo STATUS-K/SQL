@@ -1,13 +1,13 @@
---#This project for querying was fueled by data from a 'Custumer & Sales' dataset:
+#This project for querying was fueled by data from a 'Custumer & Sales' dataset:
 
---#Finding how many many unique orders were placed in January.
+#Finding how many many unique orders were placed in January.
 
 SELECT COUNT(DISTINCT orderID) FROM BIT_DB.JanSales
 WHERE length(orderID) = 6
 AND orderID <> 'Order ID';
 
 
---#Finding how many of those orders were for an iPhone.
+#Finding how many of those orders were for an iPhone.
 
 SELECT COUNT(DISTINCT orderID) FROM BIT_DB.JanSales
 WHERE length(orderID) = 6
@@ -15,7 +15,7 @@ AND orderID <> 'Order ID'
 AND Product LIKE '%Iphone%';
 
 
---#Selecting the customer account numbers for all the orders that were placed in February.
+#Selecting the customer account numbers for all the orders that were placed in February.
 
 SELECT DISTINCT cus.acctnum, feb.orderdate FROM BIT_DB.customers cus
 JOIN BIT_DB.FebSALES feb
@@ -24,7 +24,7 @@ WHERE length(orderID) = 6
 AND orderID <> 'Order ID';
 
 
---Finding which product was the cheapest one sold in January, and what was the price.
+#Finding which product was the cheapest one sold in January, and what was the price.
 
 SELECT Product, price FROM BIT_DB.JanSales
 WHERE length(orderID) = 6
@@ -34,14 +34,14 @@ ORDER BY price ASC
 LIMIT 1;
 
 
---#Finding what is the total revenue for each product sold in January.
+#Finding what is the total revenue for each product sold in January.
 
 SELECT SUM(quantity)*price as Revenue, product
 FROM BIT_DB.JanSales
 GROUP BY product; 
 
 
---#Finding which products were sold in February at 548 Lincoln St, Seattle, WA 98101, how many of each were sold, and what was the total revenue. 
+#Finding which products were sold in February at 548 Lincoln St, Seattle, WA 98101, how many of each were sold, and what was the total revenue. 
 
 SELECT DISTINCT product, location, SUM(quantity) as TotalSold, SUM(Quantity)*price as revenue 
 FROM BIT_DB.FebSales
@@ -49,7 +49,7 @@ WHERE location = '548 Lincoln St, Seattle, WA 98101'
 GROUP BY Product;
 
 
---#Finding how many customers ordered more than 2 products at a time in February, and what was the average amount spent for those customers.
+#Finding how many customers ordered more than 2 products at a time in February, and what was the average amount spent for those customers.
 
 SELECT COUNT(DISTINCT cus.acctnum) AS TotalCusts, AVG(feb.price * feb.quantity) AS AvgAmountSpent 
 FROM BIT_DB.customers as cus JOIN BIT_DB.FebSales as feb 
