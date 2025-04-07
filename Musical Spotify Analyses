@@ -1,0 +1,195 @@
+# THIS PROJECT WAS FUELED BY PUBLIC SPOTIFY DATA
+# In my RDBMS I created a table to insert the data into
+# I worked analytic magic on the data using SQL
+
+# Creating the table: 
+CREATE TABLE BIT_DB.Spotifydata (
+id integer PRIMARY KEY,
+artist_name varchar NOT NULL,
+track_name varchar NOT NULL,
+track_id varchar NOT NULL,
+popularity integer NOT NULL,
+danceability decimal(4,3) NOT NULL,
+energy decimal(4,3) NOT NULL,
+song_key integer NOT NULL,
+loudness decimal(5,3) NOT NULL,
+song_mode integer NOT NULL,
+speechiness decimal(5,4) NOT NULL,
+acousticness decimal(6,5) NOT NULL,
+instrumentalness decimal(8,7) NOT NULL,
+liveness decimal(5,4) NOT NULL,
+valence decimal(4,3) NOT NULL,
+tempo decimal(6,3) NOT NULL,
+duration_ms integer NOT NULL,
+time_signature integer NOT NULL )
+
+# Next I inserted the Spotify data .csv into the table
+# I took into account how project coordinators/managers, executives, stakeholders, and any potential software engineer teams may need to use the data
+# In this case for Spotify
+# I evaluated the data using the following SQL:
+
+# Summary Query for Executives: High-Level Performance Insights
+# This query delivers key performance indicators and strategic insights focused on the song attributes.
+# 1. Querying to get summary statistics for key attributes:
+SELECT MAX(popularity) AS MaxPopularity, MAX(danceability) AS MaxDanceability,
+MAX(energy) AS MaxEnergy, MAX(valence) AS MaxValence,
+MAX(duration_ms) AS MaxDuration, MIN(duration_ms) AS MinDuration,
+COUNT(*) AS NumOfSongs FROM BIT_DB.Spotifydata;
+
+# 2. Finding the top artist based on how many of their songs made the charts:
+Select artist_name, COUNT(track_name) track_count,
+CASE WHEN COUNT(track_name) >= 4 THEN 'HIGHEST POPULARITY'
+WHEN COUNT(track_name) >= 3 THEN 'HIGHER POPULARITY'
+WHEN COUNT(track_name) >= 2 THEN 'HIGH POPULARITY'
+WHEN COUNT(track_name) >= 1 THEN 'ALMOST THERE'
+ELSE 'DOESN"T MATTER THE DATA GOES UP TO 4 AND THATS IT'
+END AS RANKIN
+FROM BIT_DB.Spotifydata
+GROUP BY artist_name
+ORDER BY track_count DESC;
+
+
+
+# Progress Update Query for Stakeholders: Recent Additions and Notable Songs
+# This query highlights recent additions and notable tracks, serving as a progress update for stakeholders.
+# Querying which tracks from the top 50 belong in the top 5:
+SELECT *
+FROM BIT_DB.Spotifydata
+ORDER BY popularity DESC
+LIMIT 5;
+
+
+
+# Technical Details Query for Software Engineers: Song Feature Distribution
+# This query provides technical metrics for songs to assist in system optimization and troubleshooting.
+# Querying to get detailed acoustic and content features of songs:
+SELECT artist_name, track_name, acousticness,
+energy, danceability, instrumentalness,
+speechiness, liveness, valence
+FROM BIT_DB.Spotifydata;
+
+
+
+# General Use Query: Fallback Overview for Unknown Roles:
+# Provides a general overview of song data suitable for anyone.
+# General query to provide an overview of all track details:
+SELECT artist_name, track_name,
+popularity, danceability, energy, 
+tempo, duration_ms
+FROM BIT_DB.Spotifydata;
+
+
+
+# For Software Engineers: Technical Attributes of High Energy Songs
+# This query retrieves detailed technical data for high-energy songs, which can be useful for software engineers to analyze patterns and optimize systems.
+# Retrieving detailed technical attributes for high-energy songs:
+SELECT artist_name, track_name, energy, 
+tempo, loudness, instrumentalness
+FROM BIT_DB.Spotifydata
+WHERE energy >= 0.7
+ORDER BY energy DESC;
+
+
+
+#For Project Coordinators: Track Song Attributes by Artist
+#This query helps in tracking various attributes of songs for a specific artist, helping project coordinators manage and report on song attributes.
+# 1. Retrieving detailed attributes for all songs by Doja Cat, Bad Bunny, SZA, and Polo G for currating a potential collaboration:
+SELECT * FROM BIT_DB.Spotifydata
+WHERE artist_name LIKE '%Doja Cat%'
+OR artist_name LIKE '%Bad Bunny%'
+OR artist_name LIKE '%SZA%'
+OR artist_name LIKE '%Polo G%'
+ORDER BY popularity DESC;
+
+# 2. Gathering detailed attributes for all songs by artist who made the top 2 most popular songs for currating a potential collaboration:
+SELECT * FROM BIT_DB.Spotifydata
+ORDER BY popularity DESC
+LIMIT 2;
+
+
+
+# Executive-Focused Queries: Top Performing Songs and Artists
+# Purpose: Provide a high-level overview of the most popular songs and artists based on average popularity scores.
+# 1. Retrieving top 5 artists with the highest average song popularity:
+SELECT artist_name, 
+ROUND(AVG(popularity), 2) AS average_popularity,
+COUNT(id) AS number_of_songs
+FROM BIT_DB.Spotifydata
+GROUP BY artist_name
+HAVING COUNT(id) > 1
+ORDER BY average_popularity DESC
+LIMIT 5;
+
+# 2. Finding the songs w/featured artist from the Top 50 tracks to further analyze the potential fanbase(s):
+SELECT * FROM BIT_DB.Spotifydata
+WHERE track_name LIKE '%feat%'
+OR track_name LIKE '%with %'
+ORDER BY popularity DESC;
+
+# 3. High-level summary: Number of featured tracks and top artists:
+SELECT COUNT(*) as total_tracks,
+ROUND(AVG(popularity), 2) as avg_popularity
+FROM BIT_DB.Spotifydata
+WHERE track_name LIKE '%feat%'
+OR track_name LIKE '%with %'
+ORDER BY avg_popularity DESC;
+
+
+
+# Pulling data for Project Cooridinators 
+# Objective: To provide a summary of the most popular songs and their key attributes to help track day-to-day operations and resource allocation.
+# Querying to get the top 10 most popular songs with key attributes:
+SELECT track_name, artist_name, 
+AVG(popularity) AS avg_popularity, 
+AVG(danceability) AS avg_danceability, 
+AVG(energy) AS avg_energy, 
+AVG(valence) AS avg_valence, 
+AVG(tempo) AS avg_tempo
+FROM BIT_DB.Spotifydata
+GROUP BY track_name, artist_name, popularity
+ORDER BY popularity DESC
+LIMIT 10;
+
+
+
+# Retrieving data for Stakeholders
+# Objective: To provide detailed insights into specific song attributes and their impact, helping stakeholders understand how investments are being utilized and the impact of ongoing projects.
+# Querying to analyze the top 5 most popular songs by artist and categorizing their attributes to help stakeholders understand the musical characteristics and their potential impact on listener engagement:
+SELECT track_name, artist_name, 
+CASE WHEN danceability > 0.7 THEN 'High Danceability'
+WHEN danceability > 0.5 THEN 'Medium Danceability'
+ELSE 'Low Danceability'
+END AS danceability_level,
+CASE WHEN energy > 0.7 THEN 'High Energy'
+WHEN energy > 0.5 THEN 'Medium Energy'
+ELSE 'Low Energy'
+END AS energy_level,
+CASE WHEN valence > 0.7 THEN 'High Valence'
+WHEN valence > 0.5 THEN 'Medium Valence'
+ELSE 'Low Valence'
+END AS valence_level,
+CASE WHEN tempo > 120 THEN 'Fast Tempo'
+WHEN tempo > 90 THEN 'Moderate Tempo'
+ELSE 'Slow Tempo'
+END AS tempo_level
+FROM BIT_DB.Spotifydata
+ORDER BY popularity DESC
+LIMIT 5;
+
+
+
+# BONUS: FUN: FOR K
+# OBJECTIVE: GO WILD
+# CREATING AN IMAGINARY LEGENDARY ARTIST THAT HAS ALL THE STATS OF ALL THE ARTIST SUMMED EACH OTHER TIMES EACH OTHER:
+
+SELECT SUM(popularity)*MAX(popularity)*COUNT(popularity)
+*SUM(danceability)*MAX(danceability)*COUNT(danceability)
+*SUM(liveness)*MAX(liveness)*COUNT(liveness)
+*SUM(energy)*MAX(energy)*COUNT(energy)
+AS AURA,
+CASE WHEN (SUM(popularity)*MAX(popularity)*COUNT(popularity)
+*SUM(danceability)*MAX(danceability)*COUNT(danceability)
+*SUM(liveness)*MAX(liveness)*COUNT(liveness)
+*SUM(energy)*MAX(energy)*COUNT(energy) > 9000) THEN 'YU'
+END AS NewARTIST
+FROM BIT_DB.Spotifydata;
