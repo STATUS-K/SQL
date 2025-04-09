@@ -176,6 +176,8 @@ FROM BIT_DB.Spotifydata
 ORDER BY popularity DESC
 LIMIT 5;
 
+
+
 # Retrieving data for Project Coordinators and Stakeholders.
 # Objective: help stakeholders and project coordinators prioritize these artists for targeted marketing, resource allocation, or further analysis.
 # Calculating the average popularity for the artists in the Spotify data table, 
