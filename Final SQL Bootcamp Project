@@ -1,0 +1,346 @@
+#Final SQL Bootcamp Project
+#Fueled by a load of data as follows:
+#Database: https://cdn.fs.teachablecdn.com/dRmwOLQsS22FVFbXfh3x
+
+#How to understand this database:
+#employees table stores employees data such as employee id, last name, first name, etc. It also has a field named ReportsTo to specify who reports to whom.
+#customers table stores customers data. The line between employees.Employeeid and customers.SupportRepID shows how the two tables are related (ie, how you would JOIN them).
+#The invoices table stores invoice header data (Customer ID, Billing Address, etc) and the invoice_items table stores the invoice line items data (Unit Price, Quantity).
+#artists table stores artists data.
+#albums table stores data about a list of tracks. Each album belongs to one artist. However, one artist may have multiple albums.
+#media_types table stores media types such as MPEG audio and AAC audio files.
+#genres table stores music types such as rock, jazz, metal, etc.
+#tracks table stores the data of songs. Each track belongs to one album.
+#playlists table store data about playlists. Each playlist contains a list of tracks. Each track may belong to multiple playlists. 
+#The relationship between the playlists table and tracks table is many-to-many. The playlist_track table is used to reflect this relationship.
+
+# There's thousands of entries in this database, so I will not insert the schema data here for this one. As long as the link exist you can get it from there!
+# I took into account how project coordinators/managers, executives, stakeholders, and any potential development teams that may need to use the data
+# I evaluated the data using the following SQL: 
+
+# 1. Combined Sales Overview for Project Coordinators and Executives  
+# Querying to provide both track counts and total sales, along with top-selling tracks.  
+WITH GenreSales AS (SELECT g.Name AS GenreName,
+COUNT(ii.TrackId) AS TrackSalesCount,
+SUM(ii.UnitPrice * ii.Quantity) AS TotalSales
+FROM genres g
+JOIN tracks t ON g.GenreId = t.GenreId
+JOIN invoice_items ii ON t.TrackId = ii.TrackId
+GROUP BY g.Name),
+MediaTypeSales AS (
+SELECT mt.Name AS MediaTypeName,
+COUNT(ii.TrackId) AS TrackSalesCount,
+SUM(ii.UnitPrice * ii.Quantity) AS TotalSales
+FROM media_types mt
+JOIN tracks t ON mt.MediaTypeId = t.MediaTypeId
+JOIN invoice_items ii ON t.TrackId = ii.TrackId
+GROUP BY mt.Name),
+TopTracks AS (SELECT t.Name AS TrackName, 
+SUM(ii.UnitPrice * ii.Quantity) AS TotalSales
+FROM tracks t
+JOIN invoice_items ii ON t.TrackId = ii.TrackId
+GROUP BY t.Name
+ORDER BY TotalSales DESC
+LIMIT 5)
+SELECT gs.GenreName, gs.TrackSalesCount AS GenreTrackCount,
+gs.TotalSales AS GenreTotalSales, mts.MediaTypeName, mts.TrackSalesCount AS MediaTypeTrackCount,
+mts.TotalSales AS MediaTypeTotalSales, tt.TrackName, tt.TotalSales AS TopTrackSales
+FROM GenreSales gs
+CROSS JOIN MediaTypeSales mts
+CROSS JOIN TopTracks tt;
+
+
+
+# 2. Detailed Customer Sales Insights for COOs  
+# Querying to provide a detailed view of sales by customer and the most popular tracks they purchase. 
+WITH CustomerTrackSales AS (SELECT c.CustomerId, c.FirstName, c.LastName, 
+t.Name AS TrackName, COUNT(ii.TrackId) AS SalesCount
+FROM customers c
+JOIN invoices i ON c.CustomerId = i.CustomerId
+JOIN invoice_items ii ON i.InvoiceId = ii.InvoiceId
+JOIN tracks t ON ii.TrackId = t.TrackId
+GROUP BY c.CustomerId, c.FirstName, c.LastName, t.Name),
+CustomerTopTracks AS (SELECT CustomerId, FirstName, LastName, TrackName, SalesCount,
+ROW_NUMBER() OVER (PARTITION BY CustomerId ORDER BY SalesCount DESC) AS rn
+FROM CustomerTrackSales)
+SELECT CustomerId, FirstName, LastName, TrackName, SalesCount
+FROM CustomerTopTracks
+WHERE rn <= 3
+ORDER BY CustomerId, SalesCount DESC;
+
+
+
+# 3. High-Level Summary of Categories for Executives and Stakeholders  
+# Querying to provide a high-level summary of the number of tracks in each category, giving a broad overview of the music catalog.
+SELECT 'Media Type' AS Category, mt.Name AS CategoryName, COUNT(t.TrackId) AS TotalTracks
+FROM media_types mt
+INNER JOIN tracks t ON mt.MediaTypeId = t.MediaTypeId
+GROUP BY mt.Name
+
+UNION ALL
+
+SELECT 'Genre' AS Category, g.Name AS CategoryName, COUNT(t.TrackId) AS TotalTracks
+FROM genres g
+INNER JOIN tracks t ON g.GenreId = t.GenreId
+GROUP BY g.Name
+
+UNION ALL
+
+SELECT 'Playlist' AS Category, p.Name AS CategoryName, COUNT(pt.TrackId) AS TotalTracks
+FROM playlists p
+INNER JOIN playlist_track pt ON p.PlaylistId = pt.PlaylistId
+GROUP BY p.Name
+
+UNION ALL
+
+SELECT 'Album' AS Category, a.Title AS CategoryName, COUNT(t.TrackId) AS TotalTracks
+FROM albums a
+INNER JOIN tracks t ON a.AlbumId = t.AlbumId
+GROUP BY a.Title
+
+UNION ALL
+
+SELECT 'Artist' AS Category, ar.Name AS CategoryName,COUNT(a.AlbumId) AS TotalAlbums
+FROM artists ar
+INNER JOIN albums a ON ar.ArtistId = a.ArtistId
+GROUP BY ar.Name;
+    
+
+    
+# 4. High-Level Summary of Invoices and Customers for Project Coordinators, Executives, and Stakeholders  
+# Querying to create a high-level summary of invoices and customers, including the number of invoices and total spending per customer.
+SELECT c.FirstName, c.LastName, COUNT(i.InvoiceId) AS TotalInvoices, SUM(i.Total) AS TotalSpent
+FROM customers c
+INNER JOIN invoices i ON c.CustomerId = i.CustomerId
+GROUP BY c.FirstName, c.LastName;
+    
+
+
+# 5. Comprehensive Track Information for Development Teams  
+# Querying to provide a detailed view of each track, 
+# It can assist development teams by offering a detailed breakdown of track performance.
+SELECT t.TrackId, t.Name AS TrackName,
+a.Title AS AlbumTitle, ar.Name AS ArtistName,
+g.Name AS GenreName, mt.Name AS MediaTypeName,
+COUNT(ii.TrackId) AS SalesCount, a.AlbumId,
+ar.ArtistId, g.GenreId, mt.MediaTypeId FROM tracks t
+LEFT JOIN albums a ON t.AlbumId = a.AlbumId
+LEFT JOIN artists ar ON a.ArtistId = ar.ArtistId
+LEFT JOIN genres g ON t.GenreId = g.GenreId
+LEFT JOIN media_types mt ON t.MediaTypeId = mt.MediaTypeId
+LEFT JOIN invoice_items ii ON t.TrackId = ii.TrackId
+GROUP BY t.TrackId, t.Name, a.Title, ar.Name, g.Name, mt.Name,
+a.AlbumId, ar.ArtistId, g.GenreId, mt.MediaTypeId
+ORDER BY SalesCount DESC;
+    
+
+    
+# 6. Detailed Album, Artist, and Track Information for Software Engineers  
+# Querying for detailed album, artist, and track information.  
+# It helps software engineers by providing a detailed view of how tracks are connected to albums and artists.
+SELECT a.Title AS AlbumTitle, ar.Name AS ArtistName,
+t.TrackId, t.Name AS TrackName FROM albums a
+INNER JOIN artists ar ON a.ArtistId = ar.ArtistId
+INNER JOIN tracks t ON a.AlbumId = t.AlbumId;
+
+
+
+# 7. Detailed Invoice and Customer Information for Software Engineers and COOs  
+# Querying to provide detailed invoice and customer information.  
+# It can assist software engineers by linking invoices to customers, showing invoice dates, totals, and customer names.
+SELECT i.InvoiceId, i.InvoiceDate, i.Total AS InvoiceTotal, c.FirstName, c.LastName 
+FROM invoices i
+INNER JOIN customers c ON i.CustomerId = c.CustomerId;
+    
+
+
+# 8. Employee-Customer Relationship Details for Project Coordinators  
+# Querying to provide detailed information about the relationship between employees and customers.  
+# It can help project coordinators by linking employees to the customers they support, showing the employee-customer connections.
+SELECT e.EmployeeID, e.FirstName AS EmployeeFirstName, e.LastName AS EmployeeLastName,
+c.CustomerId, c.FirstName AS CustomerFirstName, c.LastName AS CustomerLastName
+FROM employees e
+INNER JOIN customers c ON e.EmployeeId = c.SupportRepId;    
+
+
+
+# 9. Detailed Playlist, Track, and Related Information for Software Engineers  
+# Querying to provide detailed information about playlists and their associated tracks.  
+# This helps software engineers by offering a detailed view of playlists, including the tracks they contain and related album, artist, and genre data.
+SELECT t.TrackId, p.Name AS PlaylistName,
+t.Name AS TrackName, a.Title AS AlbumTitle,
+ar.Name AS ArtistName, g.Name AS GenreName,
+mt.Name AS MediaTypeName FROM playlists p
+INNER JOIN playlist_track pt ON p.PlaylistId = pt.PlaylistId
+INNER JOIN tracks t ON pt.TrackId = t.TrackId
+LEFT JOIN albums a ON t.AlbumId = a.AlbumId
+LEFT JOIN artists ar ON a.ArtistId = ar.ArtistId
+LEFT JOIN genres g ON t.GenreId = g.GenreId
+LEFT JOIN media_types mt ON t.MediaTypeId = mt.MediaTypeId
+ORDER BY p.Name, t.TrackId;
+    
+
+
+# 10. Playlist Popularity Based on Sales for Executives and Stakeholders  
+# Querying to rank playlists based on the total sales of their tracks.  
+# This can help executives and stakeholders by identifying which playlists are most effective in driving sales.
+WITH PlaylistSales AS (SELECT p.Name AS PlaylistName, SUM(ii.UnitPrice * ii.Quantity) AS TotalSales
+FROM playlists p
+JOIN playlist_track pt ON p.PlaylistId = pt.PlaylistId
+JOIN tracks t ON pt.TrackId = t.TrackId
+JOIN invoice_items ii ON t.TrackId = ii.TrackId
+GROUP BY p.Name)
+SELECT PlaylistName, TotalSales, RANK() OVER (ORDER BY TotalSales DESC) AS SalesRank
+FROM PlaylistSales
+ORDER BY TotalSales DESC;
+
+
+
+# 11. Top Customers by Total Spending for Project Coordinators and Executives  
+# Querying to identify the top customers based on their total spending.  
+# This assists project coordinators and executives by highlighting the customers who generate the most revenue.
+SELECT c.FirstName, c.LastName, c.Country, SUM(i.Total) AS TotalSpending
+FROM customers c
+JOIN invoices i ON c.CustomerId = i.CustomerId
+GROUP BY c.CustomerId, c.FirstName, c.LastName, c.Country
+ORDER BY TotalSpending DESC;
+
+
+
+# 12. Employee Performance by Customer Sales for Executives and Stakeholders  
+# Querying to measure the performance of employees based on the sales generated by the customers they support.  
+# This helps executives and stakeholders by evaluating how much revenue each employee's supported customers generate.
+SELECT e.FirstName, e.LastName, SUM(i.Total) AS TotalSales
+FROM employees e
+JOIN customers c ON e.EmployeeId = c.SupportRepId
+JOIN invoices i ON c.CustomerId = i.CustomerId
+GROUP BY e.EmployeeId, e.FirstName, e.LastName
+ORDER BY TotalSales DESC;
+
+
+
+# 13. Customer Lifetime Value for Project Coordinators and Development Teams
+# Querying to calculate the total revenue generated by each customer over their lifetime.  
+# This assists project coordinators and development teams by identifying high-value customers and assessing customer loyalty.
+SELECT c.CustomerId, c.FirstName, c.LastName, c.Email,
+SUM(i.Total) AS CustomerLifetimeValue
+FROM customers c
+JOIN invoices i ON c.CustomerId = i.CustomerId
+GROUP BY c.CustomerId, c.FirstName, c.LastName, c.Email
+ORDER BY CustomerLifetimeValue DESC;
+
+
+
+# 14. Sales Performance by Region for CEOs, COOs, and Stakeholders  
+# Querying to break down sales performance by geographical regions and nation(s).  
+# This helps executives and stakeholders by providing insights into sales trends across different cities and countries.
+SELECT c.Country AS BillingCountry, c.City AS BillingCity, SUM(i.Total) AS RegionalSales,
+ROUND(SUM(SUM(i.Total)) OVER (PARTITION BY c.Country), 2) AS NationalSales
+FROM customers c
+JOIN invoices i ON c.CustomerId = i.CustomerId
+GROUP BY c.City, c.Country
+ORDER BY NationalSales DESC;
+
+
+
+# 15. Composer Popularity by Sales for Executives and Stakeholders  
+# Querying to identify the most popular composers based on track sales.  
+# This assists executives and stakeholders by highlighting composers who significantly contribute to sales.
+WITH SalesRankings AS (SELECT t.Composer,
+ROUND(SUM(ii.UnitPrice * ii.Quantity)) AS TotalSales,
+RANK() OVER (ORDER BY SUM(ii.UnitPrice * ii.Quantity) DESC) AS SalesRank
+FROM tracks t
+JOIN invoice_items ii ON t.TrackId = ii.TrackId
+WHERE t.Composer IS NOT NULL
+GROUP BY t.Composer)
+SELECT Composer, TotalSales, SalesRank
+FROM SalesRankings
+ORDER BY SalesRank;
+
+
+
+# 16. Playlist Track Analysis for Executives and Stakeholders  
+# Querying further to analyze the number of tracks in each playlist and their sales impact.  
+# This can help executives and stakeholders by evaluating the size and sales effectiveness of each playlist.
+WITH PlaylistTrackCount AS (
+SELECT p.Name AS PlaylistName,
+COUNT(pt.TrackId) AS TrackCount
+FROM playlists p
+JOIN playlist_track pt ON p.PlaylistId = pt.PlaylistId
+GROUP BY p.Name),
+PlaylistSales AS (SELECT p.Name AS PlaylistName,
+SUM(ii.UnitPrice * ii.Quantity) AS TotalSales
+FROM playlists p
+JOIN playlist_track pt ON p.PlaylistId = pt.PlaylistId
+JOIN tracks t ON pt.TrackId = t.TrackId
+JOIN invoice_items ii ON t.TrackId = ii.TrackId
+GROUP BY p.Name)
+SELECT pt.PlaylistName, pt.TrackCount, ps.TotalSales
+FROM PlaylistTrackCount pt
+JOIN PlaylistSales ps ON pt.PlaylistName = ps.PlaylistName
+ORDER BY TotalSales DESC;
+
+
+
+# 17. Employee Contribution to Playlist Sales for Executives and Stakeholders  
+# Querying to analyze how employees contribute to sales through the playlists their customers purchase tracks from.  
+# This will assist executives and stakeholders by showing the impact of employees on playlist-driven revenue.
+SELECT e.EmployeeId, e.FirstName AS EmployeeFirstName,
+e.LastName AS EmployeeLastName, 
+SUM(ii.UnitPrice * ii.Quantity) AS TotalSalesFromPlaylists
+FROM employees e
+JOIN customers c ON e.EmployeeId = c.SupportRepId
+JOIN invoices i ON c.CustomerId = i.CustomerId
+JOIN invoice_items ii ON i.InvoiceId = ii.InvoiceId
+JOIN tracks t ON ii.TrackId = t.TrackId
+JOIN playlist_track pt ON t.TrackId = pt.TrackId
+JOIN playlists p ON pt.PlaylistId = p.PlaylistId
+GROUP BY e.EmployeeId, e.FirstName, e.LastName
+ORDER BY TotalSalesFromPlaylists DESC;
+
+
+
+# 18. Track Duration Trends for Project Coordinators, Execs, and Stakeholders
+# Querying to analyze how track duration correlates with sales.  
+# This can help each party by revealing the potential of track length influencing sales.
+WITH TrackDurationSales AS (SELECT t.Milliseconds,
+SUM(ii.UnitPrice * ii.Quantity) AS TotalSales FROM tracks t
+JOIN invoice_items ii ON t.TrackId = ii.TrackId
+GROUP BY t.Milliseconds)
+SELECT CASE WHEN Milliseconds BETWEEN 0 AND 120000 THEN '0-120000'
+WHEN Milliseconds BETWEEN 120001 AND 240000 THEN '120001-240000'
+WHEN Milliseconds BETWEEN 240001 AND 360000 THEN '240001-360000'
+ELSE '360001+'
+END AS DurationRange,
+SUM(TotalSales) AS Sales,
+COUNT(Milliseconds) AS NumberOfTracks
+FROM TrackDurationSales
+GROUP BY 
+CASE WHEN Milliseconds BETWEEN 0 AND 120000 THEN '0-120000'
+WHEN Milliseconds BETWEEN 120001 AND 240000 THEN '120001-240000'
+WHEN Milliseconds BETWEEN 240001 AND 360000 THEN '240001-360000'
+ELSE '360001+'
+END
+ORDER BY DurationRange;
+
+
+
+# 19. Album Sales Performance for Executives and Stakeholders  
+# Querying to identify top-selling artists and their albums.  
+# This assists executives and stakeholders by providing insights into the top artist and their albums that are driving sales.
+WITH ArtistSales AS (SELECT ar.ArtistId, ar.Name AS ArtistName,
+SUM(ii.UnitPrice * ii.Quantity) AS TotalSales FROM artists ar
+JOIN albums a ON ar.ArtistId = a.ArtistId
+JOIN tracks t ON a.AlbumId = t.AlbumId
+JOIN invoice_items ii ON t.TrackId = ii.TrackId
+GROUP BY ar.ArtistId, ar.Name),
+TopArtist AS (SELECT ArtistId, ArtistName, TotalSales,
+ROW_NUMBER() OVER (ORDER BY TotalSales DESC) AS RowNum
+FROM ArtistSales)
+SELECT ta.ArtistName, a.Title AS AlbumTitle, g.Name AS Genre
+FROM TopArtist ta
+JOIN artists ar ON ta.ArtistId = ar.ArtistId
+JOIN albums a ON ar.ArtistId = a.ArtistId
+JOIN tracks t ON a.AlbumId = t.AlbumId
+JOIN genres g ON t.GenreId = g.GenreId;
+# The top artist was Iron Maiden by the way.
